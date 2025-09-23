@@ -41,8 +41,8 @@
       name: "Фотоаппарат Смена-8М",
       price: 20.0,
       image: "https://maksim15132.github.io/ar-shop/assets/image/smena-8m.jpg",
-      description: "https://maksim15132.github.io/ar-shop/assets/description/smena-8m.txt",
-      modelGlb: "https://maksim15132.github.io/ar-shop/assets/modelGlb/smena-8m/smena-8m.glb",
+      description: "Фотоаппарат «Смена-8М» был одним из самых популярных в Советском Союзе. Его выпускали с 1970-х по 1990-е годы на Ленинградском оптико-механическом объединении. Простая конструкция и прочный корпус делали камеру удобной даже для начинающих фотографов. С помощью «Смены» люди снимали семейные праздники, школьные мероприятия, поездки и повседневную жизнь.",
+      modelGlb: "https://maksim15132.github.io/ar-shop/assets/modelGlb/smena_8m.glb",
       modelUsdz: "https://maksim15132.github.io/ar-shop/assets/modelUsdz/Smena_8M.usdz",
     },
   ];

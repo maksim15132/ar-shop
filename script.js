@@ -51,7 +51,7 @@
       price: 40.0,
       image: "https://maksim15132.github.io/ar-shop/assets/image/zenit.jpg",
       description: "Фотоаппарат «Смена-8М» был одним из самых популярных в Советском Союзе. Его выпускали с 1970-х по 1990-е годы на Ленинградском оптико-механическом объединении. Простая конструкция и прочный корпус делали камеру удобной даже для начинающих фотографов. С помощью «Смены» люди снимали семейные праздники, школьные мероприятия, поездки и повседневную жизнь.",
-      modelGlb: "https://maksim15132.github.io/ar-shop/assets/modelGlb/zenit/zenit.glb",
+      modelGlb: "https://maksim15132.github.io/ar-shop/assets/modelGlb/zenit.glb",
       modelUsdz: "https://maksim15132.github.io/ar-shop/assets/modelUsdz/Zenit-ET.usdz",
     },
   ];

@@ -2,29 +2,34 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
+<meta
+  name="description"
+  content="Веб-Приложение с использованием технологии LiDAR — сайт школьного музея." />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ресторан AR & Taste</title>
+<link rel="shortcut icon" href="assets/icon.png" type="image/png" />
+<title>Музей 42 школы</title>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<script nomodule src="https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js"></script>
 <link rel="stylesheet" href="style.css">
-
-
 </head>
 <body class="dark">
 
 <header>
   <div class="brand">
-    <div class="logo">R</div>
+    <!-- Используем реальный логотип (favicon) вместо буквы R -->
+    <img class="logo-img" src="assets/icon.png" alt="логотип" />
     <div class="title">
-      <h1>Ресторан «AR & Taste»</h1>
-      <p>Меню • AR-просмотр блюд</p>
+      <h1>Сайт школьного музея</h1>
+      <p>Меню • AR-просмотр экспонатов</p>
     </div>
   </div>
 
   <div style="display:flex;align-items:center;gap:10px;">
-    <button id="theme-toggle" class="btn btn-ghost" title="Переключить тему">☀️ Светлая</button>
+    <button id="theme-toggle" class="btn btn-ghost theme-toggle" title="Переключить тему">☀️ Тема</button>
 
-    <button id="cart-btn" class="btn btn-ghost cart-btn" title="Корзина">
-      Корзина <span id="cart-count" class="cart-count" style="display:none;">0</span>
+    <!-- Карзина заменена на гамбургер -->
+    <button id="cart-btn" class="btn btn-ghost cart-btn" title="Меню">
+      ☰
     </button>
   </div>
 </header>
@@ -32,7 +37,7 @@
 <main class="container">
   <section style="margin-bottom:14px;">
     <h2 style="margin:0;">Наше меню</h2>
-    <p style="color:var(--muted);margin-top:6px;">Нажмите “Подробнее”, чтобы открыть мини-страницу блюда с AR-просмотром и добавить в корзину.</p>
+    <p style="color:var(--muted);margin-top:6px;">Нажмите “Подробнее”, чтобы открыть мини-страницу экспоната с AR-просмотром и добавить в корзину.</p>
   </section>
 
   <section id="menu-grid" class="menu-grid"></section>
@@ -55,23 +60,26 @@
 <!-- Модальное окно -->
 <div id="modal" class="modal-backdrop" style="display:none;">
   <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div>
+    <!-- По умолчанию: слева - превью (изображение), справа - текст/кнопки.
+         После загрузки 3D модели JS добавит класс .model-loaded и поменяет порядок -->
+    <div class="modal-preview" id="modal-preview">
       <img id="modal-img" class="dish-img" src="" alt="" />
-    </div>
-    <div>
-      <h3 id="modal-title" class="dish-title"></h3>
-      <div id="modal-price" style="color:var(--muted);margin-top:6px;"></div>
-      <p id="modal-desc" class="dish-desc"></p>
-
+      <!-- модель будет показана в том же слоте при загрузке -->
       <model-viewer
         id="model-viewer"
-        style="width: 100%; height: 320px; border-radius: 8px; background: #081226;"
+        style="width: 100%; height: 320px; border-radius: 8px; background: #081226; display:none;"
         alt=""
         camera-controls
         ar
         ar-modes="webxr scene-viewer quick-look"
         poster=""
       ></model-viewer>
+    </div>
+
+    <div class="modal-info">
+      <h3 id="modal-title" class="dish-title"></h3>
+      <div id="modal-price" style="color:var(--muted);margin-top:6px;"></div>
+      <p id="modal-desc" class="dish-desc"></p>
 
       <div class="modal-actions">
         <a id="ar-link" class="btn btn-ghost" href="#" rel="ar" target="_blank">Открыть в AR (iPhone)</a>

@@ -1,4 +1,11 @@
 (() => {
+  /* ===========================
+     СКРИПТ: полный рабочий файл
+     + loader (анимация)
+     + автоворот (rotate toggle)
+     + retry/fallback для .glb
+     =========================== */
+
   const MENU = [
     {
       id: "m1",
@@ -56,7 +63,7 @@
     },
   ];
 
-  // Элементы DOM
+  // ===== DOM =====
   const menuGrid = document.getElementById("menu-grid");
   const modal = document.getElementById("modal");
   const modalImg = document.getElementById("modal-img");
@@ -69,6 +76,8 @@
   const closeModalBtn = document.getElementById("close-modal-btn");
   const modelStatus = document.getElementById("model-status");
   const modelError = document.getElementById("model-error");
+  const modalPanel = document.querySelector(".modal-panel");
+  const modalPreview = document.querySelector(".modal-preview");
 
   const cartBtn = document.getElementById("cart-btn");
   const cartCount = document.getElementById("cart-count");
@@ -81,207 +90,394 @@
   const themeToggle = document.getElementById("theme-toggle");
   const body = document.body;
 
-  // ===== Работа с темой =====
+  // ===== UI Improvements: inject loader + styles dynamically (works без изменения HTML) =====
+  (function injectLoaderStylesAndNode() {
+    const style = document.createElement("style");
+    style.textContent = `
+      /* loader overlay for model-viewer */
+      .mv-loader {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .mv-loader .spinner {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 6px solid rgba(255,255,255,0.08);
+        border-top-color: rgba(255,255,255,0.95);
+        animation: mv-spin 1s linear infinite;
+        box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+      }
+      @keyframes mv-spin { to { transform: rotate(360deg); } }
+      .mv-overlay {
+        position: relative;
+      }
+      .mv-controls {
+        margin-top: 10px;
+        display:flex;
+        gap:8px;
+        align-items:center;
+      }
+      .mv-btn {
+        padding:8px 10px;
+        border-radius:8px;
+        border:1px solid rgba(255,255,255,0.06);
+        background:transparent;
+        cursor:pointer;
+        font-weight:700;
+      }
+      .mv-btn.active {
+        background: linear-gradient(90deg,var(--accent),#ffb28b);
+        color:#071022;
+      }
+      .mv-retry {
+        padding:6px 8px;
+        border-radius:8px;
+        background: rgba(255,255,255,0.04);
+        border:1px solid rgba(255,255,255,0.06);
+        cursor:pointer;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // create loader overlay element and attach inside modal-preview
+    const loader = document.createElement("div");
+    loader.className = "mv-loader";
+    loader.style.display = "none"; // hidden by default
+    loader.innerHTML = `<div class="spinner" aria-hidden="true"></div>`;
+    // wrap preview in mv-overlay
+    if (modalPreview) {
+      modalPreview.classList.add("mv-overlay");
+      modalPreview.appendChild(loader);
+    }
+    // expose to outer scope
+    window.__mv_loader_node = loader;
+  })();
+
+  // ===== Theme =====
   function setTheme(theme) {
     if (theme === "light") {
-      body.classList.remove("dark");
-      body.classList.add("light");
+      body.classList.remove("dark"); body.classList.add("light");
       themeToggle.textContent = "🌙 Тёмная";
     } else {
-      body.classList.remove("light");
-      body.classList.add("dark");
-      themeToggle.textContent = "☀️ Светлая";
+      body.classList.remove("light"); body.classList.add("dark");
+      themeToggle.textContent = "☀️ Тема";
     }
     localStorage.setItem("ar_theme", theme);
   }
-
-  // Инициализация темы из localStorage
   const savedTheme = localStorage.getItem("ar_theme") || "dark";
   setTheme(savedTheme);
-
   themeToggle.onclick = () => {
     const newTheme = body.classList.contains("light") ? "dark" : "light";
     setTheme(newTheme);
   };
 
-  // ===== Работа с корзиной =====
+  // ===== Cart =====
   let cart = JSON.parse(localStorage.getItem("ar_cart") || "[]");
-
-  function saveCart() {
-    localStorage.setItem("ar_cart", JSON.stringify(cart));
-  }
-
+  function saveCart() { localStorage.setItem("ar_cart", JSON.stringify(cart)); }
   function updateCartUI() {
     const count = cart.reduce((acc, item) => acc + item.qty, 0);
-    cartCount.style.display = count > 0 ? "inline-block" : "none";
-    cartCount.textContent = count;
-
-    cartItemsCount.textContent = count + " шт";
-
+    if (cartCount) { cartCount.style.display = count > 0 ? "inline-block" : "none"; cartCount.textContent = count; }
+    if (cartItemsCount) cartItemsCount.textContent = count + " шт";
     const total = cart.reduce((acc, item) => acc + item.qty * item.price, 0);
-    cartTotal.innerHTML = `Итого: <strong>€${total.toFixed(2)}</strong>`;
-
-    cartPreview.style.display = count > 0 ? "flex" : "none";
+    if (cartTotal) cartTotal.innerHTML = `Итого: <strong>€${total.toFixed(2)}</strong>`;
+    if (cartPreview) cartPreview.style.display = count > 0 ? "flex" : "none";
   }
-
   function addToCart(dish, qty = 1) {
     const found = cart.find((item) => item.id === dish.id);
-    if (found) {
-      found.qty += qty;
-    } else {
-      cart.push({ ...dish, qty });
-    }
-    saveCart();
-    updateCartUI();
+    if (found) found.qty += qty; else cart.push({ ...dish, qty });
+    saveCart(); updateCartUI();
   }
-
-  function clearCart() {
-    cart = [];
-    saveCart();
-    updateCartUI();
-  }
-
-  orderBtn.onclick = () => {
-    alert("Оформление заказа пока не реализовано (демо).");
-  };
-
-  clearCartBtn.onclick = () => {
-    clearCart();
-  };
-
-  cartBtn.onclick = () => {
-    alert("Откройте карточку блюда, чтобы добавить в корзину.");
-  };
-
+  function clearCart() { cart = []; saveCart(); updateCartUI(); }
+  orderBtn.onclick = () => alert("Оформление заказа пока не реализовано (демо).");
+  clearCartBtn.onclick = () => clearCart();
+  cartBtn.onclick = () => alert("СКОРО этот раздел сайта в разработке");
   updateCartUI();
 
-  // ===== Заполнение меню =====
-  function createDishCard(dish) {
+  // ===== Render hero-cards =====
+  function createHeroCard(dish, index) {
     const article = document.createElement("article");
-    article.className = "card";
+    article.className = "hero-card";
 
-    const img = document.createElement("img");
-    img.src = dish.image;
-    img.alt = dish.name;
-    article.appendChild(img);
+    const media = document.createElement("div"); media.className = "card-media";
+    const img = document.createElement("img"); img.src = dish.image; img.alt = dish.name;
+    media.appendChild(img);
 
-    const meta = document.createElement("div");
-    meta.style.marginTop = "10px";
-
-    const flex = document.createElement("div");
-    flex.style.display = "flex";
-    flex.style.justifyContent = "space-between";
-    flex.style.alignItems = "center";
-
-    const nameDiv = document.createElement("div");
-    nameDiv.style.fontWeight = "800";
-    nameDiv.textContent = dish.name;
-    flex.appendChild(nameDiv);
-
-    const priceDiv = document.createElement("div");
-    priceDiv.className = "price";
-    priceDiv.textContent = `€${dish.price.toFixed(2)}`;
-    flex.appendChild(priceDiv);
-
-    meta.appendChild(flex);
+    const content = document.createElement("div"); content.className = "card-content";
+    const meta = document.createElement("div"); meta.className = "meta";
+    const nameDiv = document.createElement("div"); nameDiv.style.fontWeight = "800"; nameDiv.textContent = dish.name;
+    const priceDiv = document.createElement("div"); priceDiv.className = "price"; priceDiv.textContent = `€${dish.price.toFixed(2)}`;
+    meta.appendChild(nameDiv); meta.appendChild(priceDiv);
 
     const desc = document.createElement("p");
-    desc.style.color = "var(--muted)";
-    desc.style.marginTop = "8px";
-    desc.style.fontSize = "14px";
+    desc.style.color = "var(--muted)"; desc.style.marginTop = "8px"; desc.style.fontSize = "14px";
     desc.textContent = dish.description;
-    meta.appendChild(desc);
 
-    const buttonsDiv = document.createElement("div");
-    buttonsDiv.style.marginTop = "12px";
-    buttonsDiv.style.display = "flex";
-    buttonsDiv.style.gap = "8px";
+    const buttonsDiv = document.createElement("div"); buttonsDiv.className = "card-actions";
+    const detailsBtn = document.createElement("button"); detailsBtn.className = "btn btn-primary"; detailsBtn.textContent = "Подробнее";
+    const addBtn = document.createElement("button"); addBtn.className = "btn btn-ghost"; addBtn.textContent = "В корзину";
 
-    const detailsBtn = document.createElement("button");
-    detailsBtn.className = "btn btn-primary";
-    detailsBtn.textContent = "Подробнее";
     detailsBtn.onclick = () => openModal(dish);
-    buttonsDiv.appendChild(detailsBtn);
+    addBtn.onclick = () => { addToCart(dish, 1); alert("Добавлено в корзину"); };
 
-    const addBtn = document.createElement("button");
-    addBtn.className = "btn btn-ghost";
-    addBtn.textContent = "В корзину";
-    addBtn.onclick = () => {
-      addToCart(dish, 1);
-      alert("Добавлено в корзину");
-    };
-    buttonsDiv.appendChild(addBtn);
+    buttonsDiv.appendChild(detailsBtn); buttonsDiv.appendChild(addBtn);
 
-    meta.appendChild(buttonsDiv);
+    content.appendChild(meta); content.appendChild(desc); content.appendChild(buttonsDiv);
 
-    article.appendChild(meta);
-
+    article.appendChild(media); article.appendChild(content);
     return article;
   }
-
   function renderMenu() {
     menuGrid.innerHTML = "";
-    for (const dish of MENU) {
-      menuGrid.appendChild(createDishCard(dish));
+    MENU.forEach((dish, i) => { menuGrid.appendChild(createHeroCard(dish, i)); });
+  }
+  renderMenu();
+
+  // ===== Modal behavior + Model Viewer enhancements =====
+  let currentDish = null;
+  let lastModelFailed = false;
+  let autoRotate = false; // state for auto-rotation
+
+  // helper to access injected loader node
+  const loaderNode = window.__mv_loader_node || null;
+
+  // create rotate + retry controls inside modal-actions (if not present)
+  (function ensureMvControls() {
+    // find modal-actions area (exists in HTML)
+    const modalActions = document.querySelector(".modal-actions");
+    if (!modalActions) return;
+    // create rotate button
+    if (!document.getElementById("mv-rotate-btn")) {
+      const rotateBtn = document.createElement("button");
+      rotateBtn.id = "mv-rotate-btn";
+      rotateBtn.className = "mv-btn";
+      rotateBtn.textContent = "Авто-вращение";
+      rotateBtn.title = "Включить/выключить автоматическое вращение модели";
+      rotateBtn.onclick = () => {
+        autoRotate = !autoRotate;
+        rotateBtn.classList.toggle("active", autoRotate);
+        toggleAutoRotate(autoRotate);
+      };
+      modalActions.insertBefore(rotateBtn, modalActions.firstChild);
+    }
+    // create retry button placeholder
+    if (!document.getElementById("mv-retry-btn")) {
+      const retryWrap = document.createElement("div");
+      retryWrap.style.display = "none";
+      retryWrap.id = "mv-retry-wrap";
+      retryWrap.style.marginLeft = "8px";
+
+      const retryBtn = document.createElement("button");
+      retryBtn.id = "mv-retry-btn";
+      retryBtn.className = "mv-retry";
+      retryBtn.textContent = "Попробовать загрузить снова";
+      retryBtn.onclick = () => {
+        if (currentDish && currentDish.modelGlb) {
+          lastModelFailed = false;
+          startModelLoad(currentDish.modelGlb);
+        }
+      };
+
+      const downloadLink = document.createElement("a");
+      downloadLink.id = "mv-download-link";
+      downloadLink.className = "mv-retry";
+      downloadLink.style.marginLeft = "8px";
+      downloadLink.textContent = "Скачать .glb";
+      downloadLink.target = "_blank";
+      downloadLink.rel = "noopener noreferrer";
+
+      retryWrap.appendChild(retryBtn);
+      retryWrap.appendChild(downloadLink);
+      modalActions.appendChild(retryWrap);
+    }
+  })();
+
+  function showLoader(show) {
+    if (!loaderNode) return;
+    loaderNode.style.display = show ? "flex" : "none";
+  }
+
+  function toggleAutoRotate(enable) {
+    if (!modelViewer) return;
+    if (enable) {
+      // model-viewer supports "auto-rotate"
+      modelViewer.setAttribute("auto-rotate", "");
+      modelViewer.setAttribute("rotation-per-second", "30deg");
+    } else {
+      modelViewer.removeAttribute("auto-rotate");
+      modelViewer.removeAttribute("rotation-per-second");
     }
   }
 
-  renderMenu();
+  // centralised start loader -> attaches listeners and sets src
+  function startModelLoad(glbUrl) {
+    if (!modelViewer) return;
+    lastModelFailed = false;
+    // hide retry UI
+    const retryWrap = document.getElementById("mv-retry-wrap");
+    if (retryWrap) retryWrap.style.display = "none";
 
-  // ===== Модальное окно =====
-  let currentDish = null;
+    // show loader spinner
+    showLoader(true);
+    modelStatus.textContent = "Статус 3D: загрузка...";
+
+    // ensure previous listeners removed
+    modelViewer.removeEventListener("load", onModelLoaded);
+    modelViewer.removeEventListener("error", onModelError);
+
+    // attach fresh one-shot listeners
+    modelViewer.addEventListener("load", onModelLoaded, { once: true });
+    modelViewer.addEventListener("error", onModelError, { once: true });
+
+    // set poster already set earlier; set src last
+    try {
+      modelViewer.src = glbUrl || "";
+    } catch (err) {
+      console.error("Error setting model src:", err);
+      onModelError(err);
+    }
+  }
 
   function openModal(dish) {
     currentDish = dish;
     modal.style.display = "flex";
+    body.classList.add("modal-open");
 
+    // set preview image and info
     modalImg.src = dish.image;
     modalImg.alt = dish.name;
     modalTitle.textContent = dish.name;
     modalPrice.textContent = `Цена: €${dish.price.toFixed(2)}`;
     modalDesc.textContent = dish.description;
 
-    modelViewer.src = dish.modelGlb;
+    // prepare model-viewer initial state
+    modelViewer.style.display = "none";
     modelViewer.poster = dish.image;
     modelViewer.alt = dish.name;
-
-    // Для iPhone AR quick look нужно ссылку на usdz
-    arLink.href = dish.modelUsdz;
-    arLink.style.display = dish.modelUsdz ? "inline-block" : "none";
-
     modelError.style.display = "none";
     modelStatus.textContent = "Статус 3D: загрузка...";
 
-    // Подписываемся на события model-viewer
-    modelViewer.addEventListener("load", onModelLoaded);
-    modelViewer.addEventListener("error", onModelError);
+    // reset panel state
+    modalPanel.classList.remove("model-loaded");
+
+    // AR button
+    arLink.href = dish.modelUsdz || "#";
+    arLink.style.display = dish.modelUsdz ? "inline-block" : "none";
+
+    // update download link for fallback
+    const downloadLink = document.getElementById("mv-download-link");
+    if (downloadLink) {
+      downloadLink.href = dish.modelGlb || "#";
+      downloadLink.style.display = dish.modelGlb ? "inline-block" : "none";
+    }
+
+    // start load with small delay to ensure DOM updated (keeps UX smooth)
+    setTimeout(() => {
+      if (dish.modelGlb) {
+        startModelLoad(dish.modelGlb);
+      } else {
+        modelStatus.textContent = "Статус 3D: модель отсутствует";
+        showLoader(false);
+      }
+    }, 40);
   }
 
   function closeModal() {
     modal.style.display = "none";
-    modelViewer.removeEventListener("load", onModelLoaded);
-    modelViewer.removeEventListener("error", onModelError);
-    currentDish = null;
+    body.classList.remove("modal-open");
+
+    // remove listeners and reset viewer
+    try { modelViewer.removeEventListener("load", onModelLoaded); } catch(e) {}
+    try { modelViewer.removeEventListener("error", onModelError); } catch(e) {}
+    try { modelViewer.removeAttribute("src"); } catch(e) {}
+    modelViewer.style.display = "none";
+    modalImg.style.display = "block";
+    modelStatus.textContent = "Статус 3D: idle";
+    modelError.style.display = "none";
+    showLoader(false);
+
+    // hide retry UI
+    const retryWrap = document.getElementById("mv-retry-wrap");
+    if (retryWrap) retryWrap.style.display = "none";
+
+    // ensure auto-rotate off visually (but preserve state)
+    const rotateBtn = document.getElementById("mv-rotate-btn");
+    if (rotateBtn) rotateBtn.classList.toggle("active", autoRotate);
   }
 
   closeModalBtn.onclick = closeModal;
-  modal.onclick = (e) => {
-    if (e.target === modal) closeModal();
-  };
+  modal.onclick = (e) => { if (e.target === modal) closeModal(); };
 
   addToCartBtn.onclick = () => {
-    if (currentDish) {
-      addToCart(currentDish, 1);
-      alert("Добавлено в корзину");
+    if (currentDish) { addToCart(currentDish, 1); alert("Добавлено в корзину"); }
+  };
+
+  // onModelLoaded/onModelError enhanced to drive loader + retry UI
+  function onModelLoaded() {
+    console.log("model loaded event");
+    showLoader(false);
+    modelStatus.textContent = "Статус 3D: модель загружена ✅";
+    modelError.style.display = "none";
+    modalImg.style.display = "none";
+    modelViewer.style.display = "block";
+    // add class to flip layout
+    modalPanel.classList.add("model-loaded");
+
+    // apply auto-rotate state if user enabled it
+    toggleAutoRotate(autoRotate);
+  }
+
+  function onModelError(err) {
+    console.warn("model error event", err);
+    showLoader(false);
+    lastModelFailed = true;
+    modelStatus.textContent = "Статус 3D: ошибка загрузки ❌";
+    modalImg.style.display = "none";
+    modelViewer.style.display = "none";
+    modelError.style.display = "block";
+
+    // show retry controls
+    const retryWrap = document.getElementById("mv-retry-wrap");
+    if (retryWrap) retryWrap.style.display = "flex";
+  }
+
+  // ===== attach modal events to cards =====
+  function createHeroCardWithEvents(dish) {
+    // reuse previous card builder for consistency
+    return createHeroCard(dish, 0); // createHeroCard already sets up button to openModal
+  }
+
+  // (we already used renderMenu earlier)
+
+  // ===== Accessibility & cleanup on unload =====
+  window.addEventListener("beforeunload", () => {
+    try { modelViewer.removeAttribute("src"); } catch(e) {}
+  });
+
+  // extra: keyboard support (Esc to close)
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.style.display === "flex") closeModal();
+  });
+
+  // Keep API-compatible functions exported to window for debugging (optional)
+  window.__ar_shop = {
+    openModal: (id) => {
+      const dish = MENU.find(d => d.id === id);
+      if (dish) openModal(dish);
+    },
+    reLoadModel: () => {
+      if (currentDish && currentDish.modelGlb) startModelLoad(currentDish.modelGlb);
+    },
+    toggleAutoRotate: (val) => {
+      autoRotate = !!val;
+      toggleAutoRotate(autoRotate);
+      const btn = document.getElementById("mv-rotate-btn");
+      if (btn) btn.classList.toggle("active", autoRotate);
     }
   };
 
-  function onModelLoaded() {
-    modelStatus.textContent = "Статус 3D: модель загружена";
-    modelError.style.display = "none";
-  }
-  function onModelError() {
-    modelStatus.textContent = "Статус 3D: ошибка загрузки";
-    modelError.style.display = "block";
-  }
 })();
